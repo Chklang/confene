@@ -1,0 +1,28 @@
+{
+  "name": "confene",
+  "version": "1.0.0",
+  "description": "",
+  "main": "lib/index.js",
+  "scripts": {
+    "copy:rootfiles": "cpy --parents package.json bin/** README.md .npmrc dist/",
+    "copy:all": "npm run copy:rootfiles",
+    "dist": "npm run build && npm run copy:all && npm run modifyPackagejson",
+    "distandlink": "npm run dist && cd dist && npm link",
+    "modifyPackagejson": "node merge-packagejson.js",
+    "build": "tsc",
+    "start": "node dist/lib/run.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "fs-extra": "^7.0.1",
+    "minimist": "^1.2.0"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^5.0.5",
+    "@types/minimist": "^1.2.0",
+    "cpy-cli": "^2.0.0",
+    "typescript": "^3.3.3333"
+  }
+}
