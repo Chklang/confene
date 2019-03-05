@@ -6,6 +6,12 @@ import { ILoader } from "./i-loader";
 import { IConfigurationFactory } from "..";
 
 export class ConfLoader implements ILoader {
+    public name: string
+    public constructor(
+        name?: string
+    ) {
+        this.name = name || 'conf'
+    }
     public load(factory: IConfigurationFactory<any>): Promise<{[key: string]: any}> {
         const pathToFile = path.resolve(factory.description.homeDir || os.homedir(), factory.description.confFileName);
         return fs.pathExists(pathToFile).then((isExists) => {

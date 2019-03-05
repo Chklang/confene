@@ -3,7 +3,7 @@ import { ILoader } from "./loaders/i-loader";
 
 export interface IConfigurationParameters<T> {
     homeDir?: string;
-    confFileName: string;
+    confFileName?: string;
     loaders?: Array<ILoader>;
     description: TConfigurationParameters<T>;
 }

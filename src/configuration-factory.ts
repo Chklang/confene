@@ -20,21 +20,26 @@ export class ConfigurationFactory<T> {
         factory.instance = Promise.resolve().then(() => {
             const loaders = factory.description.loaders || [new ArgsLoader(), new EnvLoader(), new ConfLoader()];
             return Promise.all(loaders.map(loader => {
-                return loader.load(factory);
+                return loader.load(factory).then((result) => {
+                    return {
+                        loader: loader.name,
+                        conf: result
+                    };
+                })
             })).then(sourcesConf => {
                 const missingConf: string[] = [];
                 const finalConf: T = {} as T;
-                const args = minimist.default(process.argv);
                 const promisesToWait: Promise<void>[] = [];
                 for (let key in factory.description.description) {
                     const descriptor = factory.description.description[key];
-                    const keyFromConfFile = descriptor.fromConf || descriptor.name;
-                    const keyFromEnv = descriptor.fromEnv || descriptor.name;
-                    const keyFromParam = descriptor.fromParam || descriptor.name;
                     let result: any = null;
                     const keyIsFound = sourcesConf.some((sourceConf) => {
-                        if (sourceConf[keyFromParam]) {
-                            result = args[keyFromParam];
+                        if (!sourceConf.conf) {
+                            return false;
+                        }
+                        const keyToSearch = (descriptor.from && descriptor.from[sourceConf.loader]) ? descriptor.from[sourceConf.loader] : descriptor.name;
+                        if (sourceConf.conf.hasOwnProperty(keyToSearch)) {
+                            result = sourceConf.conf[keyToSearch];
                             return true;
                         }
                         return false;
@@ -118,12 +123,6 @@ export class ConfigurationFactory<T> {
             } else {
                 return ConfigurationFactory.executeOnBadValue(descriptor, value);
             }
-        } else if (temp === 'undefined') {
-            if (descriptor.isUndefinedable) {
-                return ConfigurationFactory.executeOnValueIfNeeded(descriptor, undefined);
-            } else {
-                return ConfigurationFactory.executeOnBadValue(descriptor, value);
-            }
         } else {
             return ConfigurationFactory.executeOnBadValue(descriptor, value);
         }
@@ -141,12 +140,6 @@ export class ConfigurationFactory<T> {
                 } else if (element === null) {
                     if (descriptor.isNullable) {
                         waitingPromises.push(ConfigurationFactory.executeOnValueIfNeeded(descriptor, null, index));
-                    } else {
-                        waitingPromises.push(ConfigurationFactory.executeOnBadValue(descriptor, element, index));
-                    }
-                } else if (element === undefined) {
-                    if (descriptor.isUndefinedable) {
-                        waitingPromises.push(ConfigurationFactory.executeOnValueIfNeeded(descriptor, undefined, index));
                     } else {
                         waitingPromises.push(ConfigurationFactory.executeOnBadValue(descriptor, element, index));
                     }
@@ -168,13 +161,6 @@ export class ConfigurationFactory<T> {
                 return ConfigurationFactory.executeOnBadValue(descriptor, null);
             }
         }
-        if (value === undefined) {
-            if (descriptor.isUndefinedable) {
-                return ConfigurationFactory.executeOnValueIfNeeded(descriptor, undefined);
-            } else {
-                return ConfigurationFactory.executeOnBadValue(descriptor, undefined);
-            }
-        }
         const temp = Number(value);
         if (isNaN(temp)) {
             return ConfigurationFactory.executeOnBadValue(descriptor, value);
@@ -190,12 +176,6 @@ export class ConfigurationFactory<T> {
                 if (element === null) {
                     if (descriptor.isNullable) {
                         waitingPromises.push(ConfigurationFactory.executeOnValueIfNeeded(descriptor, null, index));
-                    } else {
-                        waitingPromises.push(ConfigurationFactory.executeOnBadValue(descriptor, element, index));
-                    }
-                } else if (element === undefined) {
-                    if (descriptor.isUndefinedable) {
-                        waitingPromises.push(ConfigurationFactory.executeOnValueIfNeeded(descriptor, undefined, index));
                     } else {
                         waitingPromises.push(ConfigurationFactory.executeOnBadValue(descriptor, element, index));
                     }
@@ -221,13 +201,6 @@ export class ConfigurationFactory<T> {
                 return ConfigurationFactory.executeOnBadValue(descriptor, null);
             }
         }
-        if (value === undefined) {
-            if (descriptor.isUndefinedable) {
-                return ConfigurationFactory.executeOnValueIfNeeded(descriptor, undefined);
-            } else {
-                return ConfigurationFactory.executeOnBadValue(descriptor, undefined);
-            }
-        }
         return ConfigurationFactory.executeOnValueIfNeeded(descriptor, '' + value);
     }
 
@@ -239,12 +212,6 @@ export class ConfigurationFactory<T> {
                 if (element === null) {
                     if (descriptor.isNullable) {
                         waitingPromises.push(ConfigurationFactory.executeOnValueIfNeeded(descriptor, null, index));
-                    } else {
-                        waitingPromises.push(ConfigurationFactory.executeOnBadValue(descriptor, element, index));
-                    }
-                } else if (element === undefined) {
-                    if (descriptor.isUndefinedable) {
-                        waitingPromises.push(ConfigurationFactory.executeOnValueIfNeeded(descriptor, undefined, index));
                     } else {
                         waitingPromises.push(ConfigurationFactory.executeOnBadValue(descriptor, element, index));
                     }
@@ -295,6 +262,14 @@ export class ConfigurationFactory<T> {
     }
 
     private static executeOnBadValue<U, V>(descriptor: IConfigurationDescriptor<any, U>, badValue: any, index?: number): Promise<any> {
-        return ConfigurationFactory.getOrPromise(descriptor.onBadValue(badValue, index));
+        if (descriptor.onBadValue) {
+            return ConfigurationFactory.getOrPromise(descriptor.onBadValue(badValue, index));
+        } else {
+            if (index !== undefined) {
+                return Promise.reject('Bad value for key ' + descriptor.name + ', index = ' + index);
+            } else {
+                return Promise.reject('Bad value for key ' + descriptor.name);
+            }
+        }
     }
 }
