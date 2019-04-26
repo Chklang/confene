@@ -22,7 +22,7 @@ export class ConfigurationFactory<T> {
             return Promise.all(loaders.map(loader => {
                 return loader.load(factory).then((result) => {
                     return {
-                        loader: loader.name,
+                        loader: loader.loaderName,
                         conf: result
                     };
                 })
@@ -37,12 +37,15 @@ export class ConfigurationFactory<T> {
                         if (!sourceConf.conf) {
                             return false;
                         }
-                        const keyToSearch = (descriptor.from && descriptor.from[sourceConf.loader]) ? descriptor.from[sourceConf.loader] : descriptor.name;
-                        if (sourceConf.conf.hasOwnProperty(keyToSearch)) {
-                            result = sourceConf.conf[keyToSearch];
-                            return true;
-                        }
-                        return false;
+                        const keysToSearch = (descriptor.from && descriptor.from[sourceConf.loader]) ? descriptor.from[sourceConf.loader] : [descriptor.name];
+                        return keysToSearch.some(keyToSearch => {
+                            if (sourceConf.conf.hasOwnProperty(keyToSearch)) {
+                                result = sourceConf.conf[keyToSearch];
+                                return true;
+                            } else {
+                                return false;
+                            }
+                        })
                     });
                     if (!keyIsFound && descriptor.isMandatory) {
                         missingConf.push(descriptor.name);

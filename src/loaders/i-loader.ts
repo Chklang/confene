@@ -1,6 +1,6 @@
 import { IConfigurationFactory } from "..";
 
 export interface ILoader {
-    name: string;
+    loaderName: string;
     load(factory: IConfigurationFactory<any>): Promise<{[key: string]: any}>;
 }

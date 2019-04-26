@@ -4,11 +4,12 @@ import { ILoader } from "./i-loader";
 import { IConfigurationFactory } from "..";
 
 export class EnvLoader implements ILoader {
-    public name: string
+    public static loaderName: string = 'env';
+    public loaderName: string
     public constructor(
-        name?: string
+        loaderName?: string
     ) {
-        this.name = name || 'env'
+        this.loaderName = loaderName || EnvLoader.loaderName;
     }
     public load(factory: IConfigurationFactory<any>): Promise<{[key: string]: any}> {
         return Promise.resolve(process.env);

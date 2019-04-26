@@ -4,11 +4,12 @@ import { ILoader } from "./i-loader";
 import { IConfigurationFactory } from "..";
 
 export class ArgsLoader implements ILoader {
-    public name: string
+    public static loaderName: string = 'args';
+    public loaderName: string
     public constructor(
-        name?: string
+        loaderName?: string
     ) {
-        this.name = name || 'args'
+        this.loaderName = loaderName || ArgsLoader.loaderName;
     }
     public load(factory: IConfigurationFactory<any>): Promise<{[key: string]: any}> {
         return Promise.resolve(minimist.default(process.argv));

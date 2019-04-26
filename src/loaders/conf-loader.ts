@@ -6,11 +6,12 @@ import { ILoader } from "./i-loader";
 import { IConfigurationFactory } from "..";
 
 export class ConfLoader implements ILoader {
-    public name: string
+    public static loaderName: string = 'conf';
+    public loaderName: string
     public constructor(
-        name?: string
+        loaderName?: string
     ) {
-        this.name = name || 'conf'
+        this.loaderName = loaderName || ConfLoader.loaderName;
     }
     public load(factory: IConfigurationFactory<any>): Promise<{[key: string]: any}> {
         const pathToFile = path.resolve(factory.description.homeDir || os.homedir(), factory.description.confFileName);

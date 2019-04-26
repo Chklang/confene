@@ -1,6 +1,6 @@
 export interface IConfigurationDescriptor<T, U> {
     name: T;
-    from?: {[key: string]: string};
+    from?: {[key: string]: string[]};
     type: 'string' | 'number' | 'boolean' | 'string[]' | 'number[]' | 'boolean[]' | 'json';
     isMandatory?: boolean;
     default?: U;
