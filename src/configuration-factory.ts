@@ -1,12 +1,11 @@
 import * as fs from 'fs-extra';
 import * as os from 'os';
 import * as path from 'path';
-import * as minimist from 'minimist';
 import { IConfigurationFactory } from './i-configuration-factory';
 import { IConfigurationDescriptor } from './i-configuration-descriptor';
-import {ArgsLoader} from './loaders/args-loader';
-import {ConfLoader} from './loaders/conf-loader';
-import {EnvLoader} from './loaders/env-loader';
+import { ArgsLoader } from './loaders/args-loader';
+import { ConfLoader } from './loaders/conf-loader';
+import { EnvLoader } from './loaders/env-loader';
 
 export class ConfigurationFactory<T> {
     /**
@@ -23,6 +22,7 @@ export class ConfigurationFactory<T> {
                 return loader.load(factory).then((result) => {
                     return {
                         loader: loader.loaderName,
+                        loaderInstance: loader,
                         conf: result
                     };
                 })
@@ -41,6 +41,9 @@ export class ConfigurationFactory<T> {
                         return keysToSearch.some(keyToSearch => {
                             if (sourceConf.conf.hasOwnProperty(keyToSearch)) {
                                 result = sourceConf.conf[keyToSearch];
+                                if (result !== null && typeof result !== "string") {
+                                    result = JSON.stringify(result);
+                                }
                                 return true;
                             } else {
                                 return false;
@@ -107,7 +110,7 @@ export class ConfigurationFactory<T> {
         if (factory.instance === null) {
             return Promise.reject(new Error('Please init configuration before save it'));
         }
-        
+
         const pathToFile = path.resolve(factory.description.homeDir || os.homedir(), factory.description.confFileName);
         return factory.instance.then((conf) => {
             return fs.writeJSON(pathToFile, conf);
@@ -133,23 +136,31 @@ export class ConfigurationFactory<T> {
 
     private static formatBooleanArray(value: string, descriptor: IConfigurationDescriptor<any, boolean[]>): Promise<boolean[]> {
         try {
-            const parsedJson: boolean[] = JSON.parse(value);
             const waitingPromises: Promise<boolean>[] = [];
-            parsedJson.forEach((element, index) => {
-                if (element === true) {
-                    waitingPromises.push(ConfigurationFactory.executeOnValueIfNeeded(descriptor, true, index));
-                } else if (element === false) {
-                    waitingPromises.push(ConfigurationFactory.executeOnValueIfNeeded(descriptor, false, index));
-                } else if (element === null) {
-                    if (descriptor.isNullable) {
-                        waitingPromises.push(ConfigurationFactory.executeOnValueIfNeeded(descriptor, null, index));
+            if (value === null) {
+                if (descriptor.isNullable) {
+                    waitingPromises.push(ConfigurationFactory.executeOnValueIfNeeded(descriptor, null));
+                } else {
+                    waitingPromises.push(ConfigurationFactory.executeOnBadValue(descriptor, null));
+                }
+            } else {
+                const parsedJson: boolean[] = JSON.parse(value);
+                parsedJson.forEach((element, index) => {
+                    if (element === true) {
+                        waitingPromises.push(ConfigurationFactory.executeOnValueIfNeeded(descriptor, true, index));
+                    } else if (element === false) {
+                        waitingPromises.push(ConfigurationFactory.executeOnValueIfNeeded(descriptor, false, index));
+                    } else if (element === null) {
+                        if (descriptor.isNullable) {
+                            waitingPromises.push(ConfigurationFactory.executeOnValueIfNeeded(descriptor, null, index));
+                        } else {
+                            waitingPromises.push(ConfigurationFactory.executeOnBadValue(descriptor, element, index));
+                        }
                     } else {
                         waitingPromises.push(ConfigurationFactory.executeOnBadValue(descriptor, element, index));
                     }
-                } else {
-                    waitingPromises.push(ConfigurationFactory.executeOnBadValue(descriptor, element, index));
-                }
-            });
+                });
+            }
             return Promise.all(waitingPromises);
         } catch (e) {
             return ConfigurationFactory.executeOnBadValue(descriptor, value);
@@ -173,23 +184,31 @@ export class ConfigurationFactory<T> {
 
     private static formatNumberArray(value: string, descriptor: IConfigurationDescriptor<any, number[]>): Promise<number[]> {
         try {
-            const parsedJson: number[] = JSON.parse(value);
             const waitingPromises: Promise<number>[] = [];
-            parsedJson.forEach((element, index) => {
-                if (element === null) {
-                    if (descriptor.isNullable) {
-                        waitingPromises.push(ConfigurationFactory.executeOnValueIfNeeded(descriptor, null, index));
-                    } else {
-                        waitingPromises.push(ConfigurationFactory.executeOnBadValue(descriptor, element, index));
-                    }
+            if (value === null) {
+                if (descriptor.isNullable) {
+                    waitingPromises.push(ConfigurationFactory.executeOnValueIfNeeded(descriptor, null));
                 } else {
-                    const temp = Number(element);
-                    if (isNaN(temp)) {
-                        waitingPromises.push(ConfigurationFactory.executeOnBadValue(descriptor, element, index));
-                    }
-                    waitingPromises.push(ConfigurationFactory.executeOnValueIfNeeded(descriptor, temp, index));
+                    waitingPromises.push(ConfigurationFactory.executeOnBadValue(descriptor, null));
                 }
-            });
+            } else {
+                const parsedJson: number[] = JSON.parse(value);
+                parsedJson.forEach((element, index) => {
+                    if (element === null) {
+                        if (descriptor.isNullable) {
+                            waitingPromises.push(ConfigurationFactory.executeOnValueIfNeeded(descriptor, null, index));
+                        } else {
+                            waitingPromises.push(ConfigurationFactory.executeOnBadValue(descriptor, element, index));
+                        }
+                    } else {
+                        const temp = Number(element);
+                        if (isNaN(temp)) {
+                            waitingPromises.push(ConfigurationFactory.executeOnBadValue(descriptor, element, index));
+                        }
+                        waitingPromises.push(ConfigurationFactory.executeOnValueIfNeeded(descriptor, temp, index));
+                    }
+                });
+            }
             return Promise.all(waitingPromises);
         } catch (e) {
             return ConfigurationFactory.executeOnBadValue(descriptor, value);
@@ -209,19 +228,27 @@ export class ConfigurationFactory<T> {
 
     private static formatStringArray(value: string, descriptor: IConfigurationDescriptor<any, string[]>): Promise<string[]> {
         try {
-            const parsedJson: string[] = JSON.parse(value);
             const waitingPromises: Promise<string>[] = [];
-            parsedJson.forEach((element, index) => {
-                if (element === null) {
-                    if (descriptor.isNullable) {
-                        waitingPromises.push(ConfigurationFactory.executeOnValueIfNeeded(descriptor, null, index));
-                    } else {
-                        waitingPromises.push(ConfigurationFactory.executeOnBadValue(descriptor, element, index));
-                    }
+            if (value === null) {
+                if (descriptor.isNullable) {
+                    waitingPromises.push(ConfigurationFactory.executeOnValueIfNeeded(descriptor, null));
                 } else {
-                    waitingPromises.push(ConfigurationFactory.executeOnValueIfNeeded(descriptor, element, index));
+                    waitingPromises.push(ConfigurationFactory.executeOnBadValue(descriptor, null));
                 }
-            });
+            } else {
+                const parsedJson: string[] = JSON.parse(value);
+                parsedJson.forEach((element, index) => {
+                    if (element === null) {
+                        if (descriptor.isNullable) {
+                            waitingPromises.push(ConfigurationFactory.executeOnValueIfNeeded(descriptor, null, index));
+                        } else {
+                            waitingPromises.push(ConfigurationFactory.executeOnBadValue(descriptor, element, index));
+                        }
+                    } else {
+                        waitingPromises.push(ConfigurationFactory.executeOnValueIfNeeded(descriptor, element, index));
+                    }
+                });
+            }
             return Promise.all(waitingPromises);
         } catch (e) {
             return ConfigurationFactory.executeOnBadValue(descriptor, value);
@@ -235,17 +262,6 @@ export class ConfigurationFactory<T> {
         } catch (e) {
             return ConfigurationFactory.executeOnBadValue(descriptor, value);
         }
-    }
-
-    private static loadConfFile(confFileName: string, homeDir?: string): Promise<any> {
-        const pathToFile = path.resolve(homeDir || os.homedir(), confFileName);
-        return fs.pathExists(pathToFile).then((isExists) => {
-            if (!isExists) {
-                return null;
-            } else {
-                return fs.readJSON(pathToFile);
-            }
-        })
     }
 
     private static getOrPromise<T>(element: Promise<T> | T): Promise<T> {

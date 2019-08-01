@@ -1,12 +1,12 @@
 {
   "name": "confene",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Goal of Confene is to give an easy way to create a configuration for yours nodes projects.",
   "main": "lib/index.js",
   "scripts": {
     "copy:rootfiles": "cpy --parents package.json bin/** README.md .npmrc dist/",
     "copy:all": "npm run copy:rootfiles",
-    "dist": "npm run build && npm run copy:all && npm run modifyPackagejson",
+    "dist": "npm run test && npm run build && npm run copy:all && npm run modifyPackagejson",
     "distandlink": "npm run dist && cd dist && npm link",
     "modifyPackagejson": "node merge-packagejson.js",
     "build": "tsc",
