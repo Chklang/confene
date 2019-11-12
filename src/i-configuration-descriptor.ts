@@ -5,6 +5,9 @@ export interface IConfigurationDescriptor<T, U> {
     isMandatory?: boolean;
     default?: U;
     isNullable?: boolean;
+    description?: string;
+    shortAlias?: string[];
+    longAlias?: string[];
     onBadValue?: <V>(value: any, index?: number) => Promise<U> | Promise<V> | U | V;
     onValue?: <V>(value: V, index?: number) => Promise<V> | V;
 }

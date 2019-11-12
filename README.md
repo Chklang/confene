@@ -25,7 +25,8 @@ export class MyConfFactory implements IConfigurationFactory<IMyConf> {
         description: {
             key1: {
                 name: "key1",
-                type: "string"
+                type: "string",
+                description: "Key 1 for example"
             },
             key2: {
                 name: "key2",
@@ -64,21 +65,29 @@ export interface IConfigurationParameters<T> {
     homeDir?: string; //Specify homedir. Default is os.homedir()
     confFileName: string; //Name of configuration file
     loaders?: Array<ILoader>; //Loaders to read conf. Default is [new ArgsLoader(), new EnvLoader(), new ConfLoader()]
+    saverConf?: ISaver; //Class to use to save configuration
     description: TConfigurationParameters<T>; //Description of your configuration object
+    helpsParams?: {longNames: string[], shortNames: string[] }; //Parameters to show help. By default : --help, -h
+    savesParams?: {longNames: string[], shortNames: string[] }; //Parameters to save conf. By default : --save
+    helpFinally?: (help: string) => Promise<void>; //Callback when help is shown. By default : console.log(help) && process.exit(0);
 }
 ```
 
 ```typescript
 export interface IConfigurationDescriptor<T, U> {
     name: T; //Property name
-    fromConf?: string; //Override name for conf file
-    fromParam?: string; //Override name from args
-    fromEnv?: string; //Override name for environment variables
+    from?: {
+        [key: string]: string[] // Loader name with names into this loader. With it, you can (for example) choose differents keys for conf from arguments and from file
+        // By default keys are: "conf", "env", "args"
+    };
     type: 'string' | 'number' | 'boolean' | 'string[]' | 'number[]' | 'boolean[]' | 'json'; //Type of property
     isMandatory?: boolean; //Specify is Confene must throw an error is value isn't specified
     default?: U; //Default value
     isNullable?: boolean; //Value can be null
     isUndefinedable?: boolean; //Value can be undefined
+    shortAlias?: string[]; // Short alias of this property
+    longAlias?: string[]; // Long alias of this property
+    description?: string; // Description of this field. Used for help generation
     onBadValue?: <V>(value: any, index?: number) => Promise<U> | Promise<V> | U | V; //Callback on a bad value
     onValue?: <V>(value: V, index?: number) => Promise<V> | V; //Callback on a good value
 }

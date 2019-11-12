@@ -18,6 +18,7 @@ describe('When i want load config from environment variable', () => {
         currentEnv = {};
         process.env = currentEnv;
         ConfigFactory.description = {
+            confFileName: ".test.env",
             loaders: [new EnvLoader()],
             description: {
                 key: {

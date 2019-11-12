@@ -19,6 +19,7 @@ describe('When i want load config from arguments', () => {
         currentArgs = [oldArgs[0]];
         process.argv = currentArgs;
         ConfigFactory.description = {
+            confFileName: ".test.args",
             loaders: [new ArgsLoader()],
             description: {
                 key: {
